@@ -1,0 +1,330 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <style>
+        #map {
+            height: 100%;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+
+    <script>
+        var href = window.location.href;
+        var roomId = href.substr(href.lastIndexOf('/')); /*445857;*/
+        var uid = guid();
+        console.log(uid);
+        if (!isInt(roomId))
+            roomId = 600;
+        var markers = [];
+        var map;
+        
+
+        function isInt(value) {
+            return !isNaN(value) &&
+                parseInt(Number(value)) == value &&
+                !isNaN(parseInt(value, 10));
+        }
+
+        function guid() {
+            function s4() {
+                return Math.floor((1 + Math.random()) * 0x10000)
+                    .toString(16)
+                    .substring(1);
+            }
+            return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+                s4() + '-' + s4() + s4() + s4();
+        }
+
+        function geoFindMe() {
+            if (!navigator.geolocation) {
+                console.log("<p>Geolocation is not supported by your browser</p>");
+                return;
+            }
+
+            function success(position) {
+                var latitude = position.coords.latitude;
+                var longitude = position.coords.longitude;
+
+                console.log('<p>Latitude is ' + latitude + '° <br>Longitude is ' + longitude + '°</p>');
+            };
+
+            function error() {
+                console.log("ERROR");
+            };
+
+            navigator.geolocation.getCurrentPosition(success, error);
+        }
+
+        function initMap() {
+            var moscow = { lat: 55.751244, lng: 37.618423 };
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: moscow,
+                zoom: 8,
+                styles: [
+                    {
+                        "featureType": "all",
+                        "elementType": "labels.text.fill",
+                        "stylers": [
+                            {
+                                "saturation": 36
+                            },
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 40
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "all",
+                        "elementType": "labels.text.stroke",
+                        "stylers": [
+                            {
+                                "visibility": "on"
+                            },
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 16
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "all",
+                        "elementType": "labels.icon",
+                        "stylers": [
+                            {
+                                "visibility": "off"
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "administrative",
+                        "elementType": "geometry.fill",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 20
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "administrative",
+                        "elementType": "geometry.stroke",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 17
+                            },
+                            {
+                                "weight": 1.2
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "landscape",
+                        "elementType": "geometry",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 20
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "poi",
+                        "elementType": "geometry",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 21
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "road.highway",
+                        "elementType": "geometry.fill",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 17
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "road.highway",
+                        "elementType": "geometry.stroke",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 29
+                            },
+                            {
+                                "weight": 0.2
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "road.arterial",
+                        "elementType": "geometry",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 18
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "road.local",
+                        "elementType": "geometry",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 16
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "transit",
+                        "elementType": "geometry",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 19
+                            }
+                        ]
+                    },
+                    {
+                        "featureType": "water",
+                        "elementType": "geometry",
+                        "stylers": [
+                            {
+                                "color": "#000000"
+                            },
+                            {
+                                "lightness": 17
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            var image = {
+                url: '',
+                size: new google.maps.Size(32, 32),
+                origin: new google.maps.Point(0, 0),
+                anchor: new google.maps.Point(0, 32)
+            };
+
+            var socket = io.connect('http://37.139.0.142:5000/');
+            socket.on('connect', function (data) {
+                console.log("Connect.");
+                
+                //mount, create -> get room_id
+
+                socket.emit('mount', { uid: uid, roomId: roomId, coordinates: [0, 0] });
+
+                //socket.emit('create', { uid: 'DEAD-BEEF-CREATENEW3', coordinates: [55.251244, 37.318423] });
+                //socket.emit('update', { uid: 'DEAD-BEEF-UPDATE', roomId: -1, coordinates: [55.751244, 37.618423] });
+                //socket.emit('mount', { uid: 'Skokov', roomId: 600, coordinates: [55.751244, 37.618423] });
+                //socket.emit('mount', { uid: 'DEAD-BEEF-CREATENEW', roomId: 445857, coordinates: [55.751244, 37.618423] });
+                //socket.emit('mount', { uid: 'DEAD-BEEF-CREATENEW2', roomId: 445857, coordinates: [55.251244, 37.318423] });
+                //socket.emit('mount', { uid: 'DEAD-BEEF-CREATENEW3', roomId: 445857, coordinates: [55.551244, 37.918423] });
+                //socket.emit('mount', { uid: 'DEAD-BEEF-CREATENEW4', roomId: 445857, coordinates: [55.151244, 37.018423] });
+
+                //var _laty = 0.000001;
+                //var _lngy = 0.000001;
+
+                setInterval(function () {
+                    if (markers) {
+                        console.log("Tick");
+                        //_laty += 0.000001;
+                        //_lngy += 0.000001;
+                        //roomId = 601;
+
+                        //var __client = _.find(markers, { 'uid': 'Skokov' });
+                        //console.log(__client.marker.position);
+                        //console.log(__client.marker.position.lat());
+                        //console.log(__client.marker.position.lng());
+
+                        socket.emit('update', { uid: uid, roomId: roomId, coordinates: [0, 0] });
+                        //socket.emit('update', { uid: 'Skokov', roomId: 600, coordinates: [__client.marker.position.lat() - _laty, __client.marker.position.lng() + _lngy] });
+                        //socket.emit('update', { uid: 'DEAD-BEEF-CREATENEW', roomId: roomId, coordinates: [55.751244 - _laty, 37.618423 + _lngy] });
+                        //socket.emit('update', { uid: 'DEAD-BEEF-CREATENEW2', roomId: roomId, coordinates: [55.151244 - _laty, 37.118423 + _lngy] });
+                    }
+                }, 500);
+            });
+
+            //socket.on('create', function (data) {
+
+            //});
+
+            socket.on('update', function (data) {
+                for (var item in data.payload.members) {
+                    var _client = _.find(markers, { 'uid': data.payload.members[item].uid });
+                    if (_client) {
+                        _client.marker.setPosition(new google.maps.LatLng(data.payload.members[item].coordinates[0], data.payload.members[item].coordinates[1]));
+                    }
+                }
+            });
+
+            socket.on('mount', function (data) {
+                for (var item in data.payload.members) {
+                    var _client = _.find(markers, { 'uid': data.payload.members[item].uid });
+                    if (_client) {
+                        _client.marker.position = new google.maps.LatLng(data.payload.members[item].coordinates[0], data.payload.members[item].coordinates[1]);
+                    } else {
+                        var _marker = {
+                            uid: data.payload.members[item].uid,
+                            marker: new google.maps.Marker({
+                                position: { lat: data.payload.members[item].coordinates[0], lng: data.payload.members[item].coordinates[1] },
+                                map: map,
+                                icon: image,
+                                label: { text: data.payload.members[item].icon ? data.payload.members[item].icon : '💩', fontSize: "30px" }
+                            })
+                        }
+                        markers.push(_marker);
+                    }
+                }
+            });
+        }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDg21Cx_nXExwfboTMPdh5BwD_tW1dCrUY&callback=initMap"
+            async defer></script>
+
+    <!--<button onclick="geoFindMe()">Find me</button>-->
+
+    <div id="map"></div>
+</body>
+</html>
